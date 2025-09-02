@@ -1,0 +1,21 @@
+{
+  "CLIENT_ID": "YOUR_CLIENT_ID_HERE",
+  "TESTING_SERVER_ID": "YOUR_TESTING_SERVER_ID_HERE",
+  "LOGING_CHANNEL_ID": "YOUR_LOGGING_CHANNEL_ID_HERE",
+  "ERROR_CHANNEL_ID": "YOUR_ERROR_CHANNEL_ID_HERE",
+  "DEV_SERVER_URL": "https://discord.gg/Y2yGrJDp",
+
+  "XPHOLDER_ICON_URL": "https://cdn.discordapp.com/attachments/1403510335104618568/1404208777569243176/Tavern_Records.png?ex=68b75bd5&is=68b60a55&hm=6b6bb0299da5fdd97014280491c51ed7160734d480c09b09ac9d5bc4723750f7&",
+  "DONATE_URL": "https://ko-fi.com/tavernrecordsbot",
+
+  "XPHOLDER_COLOUR": "#bd85c9",
+  "XPHOLDER_LEVEL_UP_COLOUR": "#add8e6",
+  "XPHOLDER_RETIRE_COLOUR": "#e10600",
+  "XPHOLDER_APPROVE_COLOUR": "#90ee90",
+
+  "LEVELS": {
+    "1": 300, "2": 600, "3": 1800, "4": 3800, "5": 7500, "6": 9000, "7": 11000, "8": 14000, "9": 16000,
+    "10": 21000, "11": 15000, "12": 20000, "13": 20000, "14": 25000, "15": 30000, "16": 30000, "17": 40000,
+    "18": 40000, "19": 50000, "20": 0
+  }
+}

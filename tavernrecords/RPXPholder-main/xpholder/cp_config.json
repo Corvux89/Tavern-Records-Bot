@@ -1,0 +1,21 @@
+{
+  "useTieredCPPercent": true,
+  "cpPercentByTier": {
+    "1": 12.5,
+    "2": 15,
+    "3": 20,
+    "4": 25,
+    "5": 30
+  },
+  "customTiersEnabled": true,
+  "tierLevels": {
+    "1": [1, 4],
+    "2": [5, 9],
+    "3": [10, 14],
+    "4": [15, 18],
+    "5": [19, 20]
+  },
+  "defaultXPPerCP": 100,
+  "globalErrorLogChannelId": "123456789012345678",
+  "allowMultipleTierRoles": true
+}

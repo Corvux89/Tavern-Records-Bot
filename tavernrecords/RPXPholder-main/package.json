@@ -1,0 +1,19 @@
+{
+  "name": "rpxpholder-main",
+  "version": "1.0.0",
+  "main": "main.js",
+  "description": "Tavern Records — multi-guild XP/CP tracker bot",
+  "license": "ISC",
+  "scripts": {
+    "start": "node main.js",
+    "deploy": "node deploy-commands.js",
+    "deploy:global": "DEPLOY_GLOBAL=true node deploy-commands.js",
+    "deploy:guild": "node deploy-commands.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.2.0",
+    "discord.js": "^14.21.0",
+    "dotenv": "^17.2.1",
+    "sqlite3": "^5.1.7"
+  }
+}
