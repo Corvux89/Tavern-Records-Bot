@@ -97,6 +97,23 @@ module.exports = {
     // 7) Levels sanity (must exist; we don’t validate values deeply here)
     const levelsOk = guildService.levels && Object.keys(guildService.levels).length > 0;
 
+    // Tier Sanity (must exist; and we do validate values deeply here)
+    let tiersOk = guildService.tiers ? true : false;
+    let lastMax = null;
+    const tierList = Object.values(guildService.tiers).sort((a, b) => a.min_level - b.min_level);
+
+    for (const tier of tierList) {
+      if (lastMax !== null && tier.min_level !== lastMax + 1) {
+        tiersOk = false;
+        break;
+      }
+      if (tier.min_level > tier.max_level) {
+        tiersOk = false;
+        break;
+      }
+      lastMax = tier.max_level;
+    }
+
     // 8) Build readable summary lines
     const mark = (ok) => ok ? '✅' : '❌';
     const lines = [];
@@ -121,7 +138,8 @@ module.exports = {
       `${mark(checks.tier2.ok)} tier2RoleId ${checks.tier2.mention ?? ''}`.trim(),
       `${mark(checks.tier3.ok)} tier3RoleId ${checks.tier3.mention ?? ''}`.trim(),
       `${mark(checks.tier4.ok)} tier4RoleId ${checks.tier4.mention ?? ''}`.trim(),
-      `${mark(levelsOk)} levels present`
+      `${mark(levelsOk)} levels present`,
+      `${mark(tiersOk)} tiers arranged nicely`
     );
 
     for (const r of charRoleResults) {

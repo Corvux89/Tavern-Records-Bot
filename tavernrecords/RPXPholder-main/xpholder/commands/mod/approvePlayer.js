@@ -10,13 +10,13 @@ const {
     LEVELS              // ✅ fallback XP curve
 } = require("../../config.json");
 
-const { buildCharacterEmbed } = require("../../utils/embedBuilder");
 const {
     sqlInjectionCheck,
     logSuccess,
     safeChannelSend,
     getLevelInfo,
-    getTier
+    updateMemberTierRoles,
+    buildCharacterEmbed
 } = require("../../utils");
 
 // Tavern Records logo (used in approval DM + announcement)
@@ -240,7 +240,6 @@ module.exports = {
         // ---- Assign roles immediately on approval (character + tier) ----
         try {
             const levelInfo = getLevelInfo(guildService.levels, character.xp);
-            const tierInfo = getTier(levelInfo.level);
 
             const removeRoles = [];
             const addRoles = [];
@@ -266,25 +265,8 @@ module.exports = {
                 }
             }
 
-            // Remove other tier roles
-            for (let t = 1; t <= 4; t++) {
-                if (t !== tierInfo.tier) {
-                    const rid = guildService.config[`tier${t}RoleId`];
-                    if (rid) {
-                        const r = await guild.roles.fetch(rid).catch(() => null);
-                        if (r) removeRoles.push(r);
-                    }
-                }
-            }
-
-            // Add current tier role
-            {
-                const rid = guildService.config[`tier${tierInfo.tier}RoleId`];
-                if (rid) {
-                    const r = await guild.roles.fetch(rid).catch(() => null);
-                    if (r) addRoles.push(r);
-                }
-            }
+            // Setup Tier Roles
+            await updateMemberTierRoles(guild, guildService, player)
 
             const cleanRemoves = removeRoles.filter(Boolean);
             const cleanAdds = addRoles.filter(Boolean);

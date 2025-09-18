@@ -1,7 +1,6 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageFlags } = require('discord-api-types/v10');
-const { sqlInjectionCheck } = require("../../utils");
-const { buildCharacterEmbed } = require("../../utils/embedBuilder");
+const { sqlInjectionCheck, buildCharacterEmbed } = require("../../utils");
 
 module.exports = {
     data: new SlashCommandBuilder()

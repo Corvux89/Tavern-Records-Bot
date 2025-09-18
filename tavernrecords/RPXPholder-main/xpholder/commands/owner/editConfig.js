@@ -32,7 +32,7 @@ module.exports = {
            .addChannelOption(o =>
               o.setName('channel')
                .setDescription('Channel for level-ups')
-               .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+               .addChannelTypes(ChannelType.GuildText, ChannelType.GuildNews)
                .setRequired(true))
            .addBooleanOption(o => o.setName('public').setDescription('Show this publicly?')))
         .addSubcommand(s =>

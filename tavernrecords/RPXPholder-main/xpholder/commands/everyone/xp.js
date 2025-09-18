@@ -8,13 +8,12 @@ const {
 
 const {
     getActiveCharacterIndex,
-    getTier,
     getLevelInfo,
     safeChannelSend,
-    logSuccess
+    logSuccess,
+    getTierVisuals,
+    buildCharacterEmbed
 } = require("../../utils");
-
-const { buildCharacterEmbed, getTierVisuals } = require("../../utils/embedBuilder");
 
 // Local helper – emoji progress bar (used for retire embed)
 function getEmojiProgressBar(currentXP, neededXP, barLength = 10, emoji = '🟦') {
@@ -198,7 +197,6 @@ function createButtonEvents(
 
                     // Compute tier of the selected character
                     const newCharacterLevelInfo = getLevelInfo(guildService.levels, newCharacter.xp);
-                    const newCharacterTier = getTier(newCharacterLevelInfo.level);
 
                     // Build role arrays
                     const removeRoles = [];
@@ -217,25 +215,6 @@ function createButtonEvents(
                     // Add the selected character role
                     {
                         const rid = guildService.config[`character${Number(newCharacter.character_index)}RoleId`];
-                        if (rid) {
-                            const role = await guild.roles.fetch(rid).catch(() => null);
-                            if (role) addRoles.push(role);
-                        }
-                    }
-
-                    // Remove other tier roles
-                    for (let tierIndex = 1; tierIndex <= 4; tierIndex++) {
-                        if (tierIndex !== newCharacterTier.tier) {
-                            const rid = guildService.config[`tier${tierIndex}RoleId`];
-                            if (!rid) continue;
-                            const role = await guild.roles.fetch(rid).catch(() => null);
-                            if (role) removeRoles.push(role);
-                        }
-                    }
-
-                    // Add current tier role
-                    {
-                        const rid = guildService.config[`tier${newCharacterTier.tier}RoleId`];
                         if (rid) {
                             const role = await guild.roles.fetch(rid).catch(() => null);
                             if (role) addRoles.push(role);
@@ -446,7 +425,7 @@ function createButtonEvents(
 
                     // Build retire embed with tier visuals + bar
                     const levelInfo = getLevelInfo(guildService.levels, retiringCharacter.xp);
-                    const tierInfo = getTier(parseInt(levelInfo.level));
+                    const tierInfo = getTierInfo(guild.tiers, parseInt(levelInfo.level));
                     const { emoji } = await getTierVisuals(guild, guildService.config[`tier${tierInfo.tier}RoleId`]);
                     const currentLevelXp = Math.floor(levelInfo.levelXp ?? 0);
                     const xpToNext = Math.floor(levelInfo.xpToNext ?? 1);

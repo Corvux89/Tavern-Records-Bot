@@ -10,8 +10,7 @@ const {
     DONATE_URL
 } = require("../../config.json");
 
-const { getLevelInfo, getTier, awardCP, logSuccess, safeChannelSend } = require("../../utils");
-const { getTierVisuals } = require("../../utils/embedBuilder");
+const { getLevelInfo, awardCP, logSuccess, safeChannelSend, updateMemberTierRoles, getTierInfo, getTierVisuals } = require("../../utils");
 
 // Local helper – emoji progress bar
 function getEmojiProgressBar(currentXP, neededXP, barLength = 10, emoji = '🟦') {
@@ -113,7 +112,7 @@ module.exports = {
 
             const oldXpTarget = Number(character.xp) || 0;
             const oldLevelInfoTarget = getLevelInfo(guildService.levels, oldXpTarget);
-            const oldTierInfoTarget = getTier(parseInt(oldLevelInfoTarget.level, 10));
+            const oldTierInfoTarget = getTierInfo(guildService.tiers, parseInt(oldLevelInfoTarget.level, 10));
 
             // Determine if XP Share split applies (role-based)
             const xpShareRoleId = guildService.config["xpShareRoleId"];
@@ -141,41 +140,10 @@ module.exports = {
                 }
 
                 newXpTarget = Number(tgt.newXp) || 0;
-
-                // Update tier roles based on TARGET character only
-                try {
-                    if (member) {
-                        const removeRoles = [];
-                        const addRoles = [];
-
-                        for (let t = 1; t <= 4; t++) {
-                            const newTierInfo = getTier(parseInt(getLevelInfo(guildService.levels, newXpTarget).level, 10));
-                            if (t !== newTierInfo.tier) {
-                                const rid = guildService.config[`tier${t}RoleId`];
-                                if (!rid) continue;
-                                const r = await guild.roles.fetch(rid).catch(() => null);
-                                if (r) removeRoles.push(r);
-                            }
-                        }
-                        {
-                            const newTierInfo = getTier(parseInt(getLevelInfo(guildService.levels, newXpTarget).level, 10));
-                            const rid = guildService.config[`tier${newTierInfo.tier}RoleId`];
-                            if (rid) {
-                                const r = await guild.roles.fetch(rid).catch(() => null);
-                                if (r) addRoles.push(r);
-                            }
-                        }
-
-                        if (removeRoles.length) await member.roles.remove(removeRoles).catch(() => {});
-                        if (addRoles.length)    await member.roles.add(addRoles).catch(() => {});
-                    }
-                } catch (e) {
-                    console.warn("[award_xp] Tier role update (shared) failed:", e?.message);
-                }
-
+               
                 // Emoji/progress for TARGET
                 const newLevelInfo = getLevelInfo(guildService.levels, newXpTarget);
-                const newTierInfo = getTier(parseInt(newLevelInfo.level, 10));
+                const newTierInfo = getTierInfo(guildService.tiers, parseInt(newLevelInfo.level, 10));
                 let emoji = '🟦';
                 try {
                     const vis = await getTierVisuals(guild, guildService.config[`tier${newTierInfo.tier}RoleId`]);
@@ -315,10 +283,10 @@ module.exports = {
                     newXpCalc = oldXpTarget + value;
                     break;
                 case "set_cp":
-                    newXpCalc = awardCP(0, value, guildService.levels);
+                    newXpCalc = awardCP(guildService, 0, value);
                     break;
                 case "give_cp":
-                    newXpCalc = awardCP(oldXpTarget, value, guildService.levels);
+                    newXpCalc = awardCP(guildService, oldXpTarget, value);
                     break;
                 default:
                     await interaction.editReply("Invalid award type.");
@@ -346,38 +314,10 @@ module.exports = {
 
             // Determine new tier and update tier roles if needed
             const newLevelInfo = getLevelInfo(guildService.levels, newXpCalc);
-            const newTierInfo = getTier(parseInt(newLevelInfo.level, 10));
+            const newTierInfo = getTierInfo(guildService.tiers, parseInt(newLevelInfo.level, 10));
             const tierChanged = oldTierInfoTarget.tier !== newTierInfo.tier;
 
-            try {
-                if (member) {
-                    const removeRoles = [];
-                    const addRoles = [];
-
-                    // Remove all other tier roles
-                    for (let t = 1; t <= 4; t++) {
-                        if (t !== newTierInfo.tier) {
-                            const rid = guildService.config[`tier${t}RoleId`];
-                            if (!rid) continue;
-                            const r = await guild.roles.fetch(rid).catch(() => null);
-                            if (r) removeRoles.push(r);
-                        }
-                    }
-                    // Add current tier role
-                    {
-                        const rid = guildService.config[`tier${newTierInfo.tier}RoleId`];
-                        if (rid) {
-                            const r = await guild.roles.fetch(rid).catch(() => null);
-                            if (r) addRoles.push(r);
-                        }
-                    }
-
-                    if (removeRoles.length) await member.roles.remove(removeRoles).catch(() => {});
-                    if (addRoles.length)    await member.roles.add(addRoles).catch(() => {});
-                }
-            } catch (e) {
-                console.warn("[award_xp] Tier role update failed:", e?.message);
-            }
+            await updateMemberTierRoles(guild, guildService, member)
 
             // Prepare visuals (emoji bar based on new tier role color)
             let emoji = '🟦';
@@ -572,6 +512,7 @@ function createButtonEvents(guildService, interaction, message, undoChanges) {
             for (const ch of (undoChanges || [])) {
                 await guildService.setCharacterXP(ch);
             }
+            await updateMemberTierRoles(guild, guildService, member)
             undone = true;
 
             const undoAwardEmbed = new EmbedBuilder()

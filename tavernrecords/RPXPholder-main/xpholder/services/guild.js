@@ -5,7 +5,7 @@
  */
 
 const { listOfObjsToObj, awardCP } = require("../utils");
-const { LEVELS } = require("../config.json");
+const { LEVELS, TIERS } = require("../config.json");
 
 class guildService {
     constructor(database) {
@@ -23,11 +23,13 @@ class guildService {
         await this.createDatabases();
         await this.ensureCharacterExtraColumns();
         await this.ensureLevelsSeeded();   // ✅ make sure levels table has data
+        await this.ensureTiersSeeded();
         await this.optimizeDatabase();     // optional perf & durability tweaks
 
         // Load snapshots
         this.config   = await this.loadInit("config",   "name",      "value");
         this.levels   = await this.loadInit("levels",   "level",     "xp_to_next");
+        this.tiers    = await this.loadFull('tiers', 'tier')
         this.roles    = await this.loadInit("roles",    "role_id",   "xp_bonus");
         this.channels = await this.loadInit("channels", "channel_id", "xp_per_post");
 
@@ -40,6 +42,14 @@ class guildService {
         const sqlTable = await this.database.getAll(`SELECT * FROM ${table};`);
         await this.database.closeDatabase();
         return listOfObjsToObj(sqlTable, primaryKey, value);
+    }
+
+    async loadFull(table, primaryKey){
+        await this.database.openDatabase();
+        const sqlTable = await this.database.getAll(`SELECT * FROM ${table};`)
+        await this.database.closeDatabase()
+
+        return Object.fromEntries(sqlTable.map(row => [row[primaryKey], row]))
     }
 
     isMod(listOfRoles) {
@@ -207,7 +217,7 @@ class guildService {
 
             if (give > 0) {
                 if (isCP) {
-                    newXp = awardCP(oldXp, give, this.levels);
+                    newXp = awardCP(guildService, oldXp, give);
                 } else {
                     newXp = oldXp + give;
                 }
@@ -311,6 +321,16 @@ class guildService {
         this.levels = await this.loadInit("levels", "level", "xp_to_next");
     }
 
+    async updateTier(tier, min_level, max_level, cp_percent) {
+        await this.database.openDatabase()
+        await this.database.execute(
+            `UPDATE tiers SET min_level = ${min_level}, max_level = ${max_level}, cp_percent = ${cp_percent} WHERE tier = ${tier}`
+        )   
+        await this.database.closeDatabase()
+
+        this.tiers = await this.loadFull('tiers', 'tier')
+    }
+
     async updateRole(roleId, xpBonus) {
         await this.database.openDatabase();
         if (xpBonus >= 0) {
@@ -384,6 +404,7 @@ class guildService {
         await this.createCharactersTable();
         await this.createConfigTable();
         await this.createLevelsTable();
+        await this.createTiersTable();
         await this.createRolesTable();
     }
 
@@ -434,6 +455,15 @@ class guildService {
         );
         await this.database.closeDatabase();
         return response;
+    }
+
+    async createTiersTable(){
+        await this.database.openDatabase();
+        const response = await this.database.execute(
+            "CREATE TABLE IF NOT EXISTS tiers (tier NUMBER PRIMARY KEY, min_level NUMBER, max_level NUMBER, cp_percent NUMBER);"
+        );
+        await this.database.closeDatabase();
+        return response
     }
 
     async createRolesTable() {
@@ -492,6 +522,29 @@ class guildService {
             }
         } catch (e) {
             console.warn('[guildService] ensureLevelsSeeded failed:', e?.message);
+        } finally {
+            try { await this.database.closeDatabase(); } catch {}
+        }
+    }
+
+    async ensureTiersSeeded() {
+        try {
+            await this.database.openDatabase();
+            const countRow = await this.database.get(`SELECT COUNT(*) AS c FROM tiers;`).catch(() => null);
+            const count = Number(countRow?.c || 0);
+
+            const entries = Object.entries(TIERS || {})
+            
+            if (count < entries.length || count == 0) {
+                for (const [tier, data] of entries) {
+                    await this.database.execute(
+                        `INSERT OR REPLACE INTO tiers(tier, min_level, max_level, cp_percent) VALUES(${parseInt(tier)}, ${parseInt(data.min)}, ${parseInt(data.max)}, ${Number(data.perc) || 0});`
+                    )
+                }
+            }
+
+        } catch (e) {
+            console.warn('[guildService] ensureTiersSeeded failed: ', e?.message);
         } finally {
             try { await this.database.closeDatabase(); } catch {}
         }

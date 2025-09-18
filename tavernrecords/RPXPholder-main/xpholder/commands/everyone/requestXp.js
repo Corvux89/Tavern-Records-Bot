@@ -11,8 +11,7 @@ const {
     DONATE_URL
 } = require("../../config.json");
 
-const { getLevelInfo, awardCP, getTier, logSuccess, safeChannelSend } = require("../../utils");
-const { getTierVisuals } = require("../../utils/embedBuilder");
+const { getLevelInfo, awardCP, logSuccess, safeChannelSend, updateMemberTierRoles, getTierInfo, getTierVisuals } = require("../../utils");
 
 // Local helper – emoji progress bar
 function getEmojiProgressBar(currentXP, neededXP, barLength = 10, emoji = '🟦') {
@@ -119,10 +118,10 @@ module.exports = {
                 character["xp"] = oldXp + value;
                 break;
             case "set_cp":
-                character["xp"] = awardCP(0, value, guildService.levels);
+                character["xp"] = awardCP(guildService, 0, value);
                 break;
             case "give_cp":
-                character["xp"] = awardCP(oldXp, value, guildService.levels);
+                character["xp"] = awardCP(guildService, oldXp, value);
                 break;
         }
 
@@ -135,7 +134,7 @@ module.exports = {
         const newLevelInfo = getLevelInfo(guildService.levels, newXp);
 
         // Tier-colored visuals
-        const tierInfo = getTier(parseInt(newLevelInfo.level));
+        const tierInfo = getTierInfo(guildService.tiers, parseInt(newLevelInfo.level));
         const { emoji } = await getTierVisuals(guild, guildService.config[`tier${tierInfo.tier}RoleId`]);
         const progressBar = getEmojiProgressBar(newLevelInfo["levelXp"], newLevelInfo["xpToNext"], 10, emoji);
 
@@ -301,6 +300,7 @@ function createButtonEvents(guildService, requestMessage, character, deltaXp, co
                     awardEmbed.setColor(XPHOLDER_APPROVE_COLOUR);
 
                     await guildService.updateCharacterXP(character, deltaXp);
+                    await updateMemberTierRoles(guild, guildService, player)
 
                     await btnInteraction.update({ embeds: [awardEmbed], components: [] });
                     await player.send({ embeds: [awardEmbed] }).catch(() => {});

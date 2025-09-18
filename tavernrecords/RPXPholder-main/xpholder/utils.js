@@ -10,6 +10,7 @@ const {
     XPHOLDER_ICON_URL,
     DONATE_URL,
     XPHOLDER_RETIRE_COLOUR,
+    DEV_SERVER_URL,
     TESTING_SERVER_ID,
     LOGING_CHANNEL_ID,
     ERROR_CHANNEL_ID
@@ -20,18 +21,12 @@ const {
 AWARDS
 ------
 */
-function awardCP(startingXp, cp, levels) {
-    for (; cp > 0; cp--) {
-        startingXp += awardSingleCP(startingXp, levels);
-    }
-    return startingXp;
-}
+function awardCP(guildService, startingXp, cp) {
+    const lvlInfo = getLevelInfo(guildService.levels, startingXp)
+    const tierInfo = getTierInfo(guildService.tiers, lvlInfo.level)
+    const cpXp = tierInfo.cp_percent * lvlInfo.xpToNext
 
-function awardSingleCP(xp, levels) {
-    const levelInfo = getLevelInfo(levels, xp);
-    return Number(levelInfo.level) < 4
-        ? levelInfo.xpToNext / 4
-        : levelInfo.xpToNext / 8;
+    return startingXp + (cpXp * cp)
 }
 
 /*
@@ -119,12 +114,12 @@ function getRoleMultiplier(type, guildRoles, userRoles) {
     return multiplier;
 }
 
-function getTier(level) {
-    const lvl = Number(level) || 1;
-    if (lvl <= 4) return { tier: 1, nextTier: 2 };
-    if (lvl <= 10) return { tier: 2, nextTier: 3 };
-    if (lvl <= 16) return { tier: 3, nextTier: 4 };
-    return { tier: 4, nextTier: 4 };
+function getTierInfo(tiers, level) {
+    for ([tier, data] of Object.entries(tiers)) {
+        if (level >= data.min_level && level <= data.max_level){
+            return {"tier": tier, min_level: data.min_level, max_level: data.max_level, cp_percent: data.cp_percent}
+        }
+    }
 }
 
 function getXp(words, roleBonus, channelXp, divisor, formula) {
@@ -181,7 +176,7 @@ async function pushLogEmbed(client, guildId, channelId, embed) {
 async function safeChannelSend(channel, payload, interaction) {
     if (!channel) return;
     try {
-        await channel.send(payload);
+        return await channel.send(payload);
     } catch (err) {
         if (err.code === 50001) { // Missing Access
             console.warn(`[safeChannelSend] No access to channel ${channel.id} in guild ${channel.guild?.name}`);
@@ -220,6 +215,7 @@ async function logCommand(interaction) {
             .setFooter({ text: `Support the bot: ${DONATE_URL}` });
 
         const options = interaction.options?._hoistedOptions ?? [];
+
         for (const option of options) {
             const value = option?.value?.toString?.() ?? String(option?.value ?? '');
             if (option?.name && value) {
@@ -305,45 +301,185 @@ function sqlInjectionCheck(str) {
 Tier role updater helper
 -------------------------
 */
-async function updateMemberTierRole(guild, guildService, member, level) {
+async function updateMemberTierRoles(guild, guildService, member){
     try {
-        const n = Number(level) || 1;
-        let newTier = 1;
-        if (n <= 4) newTier = 1;
-        else if (n <= 10) newTier = 2;
-        else if (n <= 16) newTier = 3;
-        else newTier = 4;
+        const characters = await guildService.getAllCharacters(member.id);
+        const rolesToRemove = [];
+        const rolesToAdd = [];
+        const characterTiers = [...new Set(characters.map(char => {
+            const levelInfo = getLevelInfo(guildService.levels, char.xp)
+            return getTierInfo(guildService.tiers, levelInfo.level).tier
+        }))];
 
-        const removeRoles = [];
-        const addRoles = [];
+        for (let t=1; t <= 4; t++){
+            const role = await guild.roles.fetch(guildService.config[`tier${t}RoleId`]).catch(() => null);
 
-        // Remove all other tier roles
-        for (let t = 1; t <= 4; t++) {
-            if (t !== newTier) {
-                const rid = guildService.config[`tier${t}RoleId`];
-                if (!rid) continue;
-                const r = await guild.roles.fetch(rid).catch(() => null);
-                if (r) removeRoles.push(r);
+            if (role){
+                if (characterTiers.includes(t)){
+                    rolesToAdd.push(role)
+                } else{
+                    rolesToRemove.push(role)
+                }
             }
         }
 
-        // Add current tier role
-        {
-            const rid = guildService.config[`tier${newTier}RoleId`];
-            if (rid) {
-                const r = await guild.roles.fetch(rid).catch(() => null);
-                if (r) addRoles.push(r);
-            }
-        }
-
-        if (removeRoles.length) await member.roles.remove(removeRoles).catch(() => {});
-        if (addRoles.length)    await member.roles.add(addRoles).catch(() => {});
-
-        return newTier;
+        if (rolesToRemove.length) await member.roles.remove(rolesToRemove).catch(() => {});
+        if (rolesToAdd.length)    await member.roles.add(rolesToAdd).catch(() => {});
     } catch (e) {
-        console.warn("[utils.updateMemberTierRole] failed:", e?.message);
+        console.warn("[utils.updateMemberTierRoles] failed:", e?.message);
         return null;
     }
+}
+
+/*
+-------------------------
+Embeds
+-------------------------
+*/
+
+/**
+ * Clamp very light/dark role colors to keep embeds readable in Discord dark theme.
+ */
+function clampEmbedColor(colorInt) {
+    const r = (colorInt >> 16) & 0xff;
+    const g = (colorInt >> 8) & 0xff;
+    const b = colorInt & 0xff;
+    const avg = (r + g + b) / 3;
+
+    if (avg > 230) return 0xC0C0C0; // too bright → light gray
+    if (avg < 20)  return 0x2F3136; // too dark → discord-ish dark
+    return colorInt;
+}
+
+function pickEmojiForColor(colorInt) {
+    const r = (colorInt >> 16) & 0xff;
+    const g = (colorInt >> 8) & 0xff;
+    const b = colorInt & 0xff;
+
+    const anchors = {
+        '🟦': { r: 59,  g: 130, b: 246 }, // blue
+        '🟪': { r: 139, g: 92,  b: 246 }, // purple
+        '🟩': { r: 34,  g: 197, b: 94  }, // green
+        '🟨': { r: 250, g: 204, b: 21  }, // yellow
+        '🟥': { r: 239, g: 68,  b: 68  }  // red
+    };
+
+    let bestEmoji = '🟦';
+    let bestDist = Number.POSITIVE_INFINITY;
+
+    for (const [emoji, c] of Object.entries(anchors)) {
+        const dr = r - c.r;
+        const dg = g - c.g;
+        const db = b - c.b;
+        const dist = dr * dr + dg * dg + db * db;
+        if (dist < bestDist) {
+            bestDist = dist;
+            bestEmoji = emoji;
+        }
+    }
+    return bestEmoji;
+}
+
+/**
+ * Build an emoji progress bar + numeric details.
+ */
+function getEmojiProgressBar(currentXP, neededXP, barLength = 12, emoji = '🟦') {
+    if (!neededXP || neededXP <= 0 || isNaN(currentXP) || isNaN(neededXP)) {
+        return `${'⬛'.repeat(barLength)} 0%`;
+    }
+    const percent = Math.min(currentXP / neededXP, 1);
+    const filled = Math.round(barLength * percent);
+    const empty = barLength - filled;
+    return `${emoji.repeat(filled)}${'⬛'.repeat(empty)} ${Math.floor(percent * 100)}%`;
+}
+
+/**
+ * Get the tier visuals: matching emoji + role color.
+ * Falls back if the role has no color or can't be fetched.
+ */
+async function getTierVisuals(guild, roleId, fallbackEmoji = '🟦', fallbackColor = 0x7289DA) {
+    try {
+        const role = await guild.roles.fetch(roleId).catch(() => null);
+        if (!role || !role.color || role.color === 0) {
+            return { emoji: fallbackEmoji, color: clampEmbedColor(fallbackColor) };
+        }
+        const emoji = pickEmojiForColor(role.color);
+        return { emoji, color: clampEmbedColor(role.color) };
+    } catch {
+        return { emoji: fallbackEmoji, color: clampEmbedColor(fallbackColor) };
+    }
+}
+
+/**
+ * Build the character embed with tier-colored progress bar and matching embed color.
+ */
+async function buildCharacterEmbed(guildService, guild, player, character, index) {
+    const levelInfo = getLevelInfo(guildService.levels, character.xp);
+    const tierInfo = getTierInfo(guildService.tiers, levelInfo.level);
+
+    const tierRoleId = guildService.config[`tier${tierInfo.tier}RoleId`];
+    const { emoji, color } = await getTierVisuals(guild, tierRoleId);
+
+    const currentLevelXp = Math.floor(levelInfo.levelXp ?? 0);
+    const xpToNext = Math.floor(levelInfo.xpToNext ?? 1);
+    const progressBar = getEmojiProgressBar(currentLevelXp, xpToNext, 12, emoji);
+
+    // Status flags (reads user's roles)
+    const roleList = Array.isArray(player?._roles) ? player._roles : [];
+    const freezeId = guildService.config["xpFreezeRoleId"];
+    const shareId  = guildService.config["xpShareRoleId"];
+    const isFrozen = freezeId && roleList.includes(freezeId) ? "On ❄️" : "Off";
+    const isShare  = shareId  && roleList.includes(shareId)  ? "On 🎁" : "Off";
+
+    // Per-character ping flag (defaults to On if missing for legacy rows)
+    const pingRaw = character?.ping_on_award;
+    const isPing  = (pingRaw === 0 ? false : true) ? "On 🔔" : "Off";
+
+    const embed = new EmbedBuilder()
+        .setAuthor({
+            name: character.name || "Character",
+            iconURL: (character.picture_url && character.picture_url !== "null") ? character.picture_url : XPHOLDER_ICON_URL
+        })
+        .setTitle(`Level ${levelInfo.level} • ${emoji} Tier ${tierInfo.tier}`)
+        .addFields(
+            { name: "Character Index", value: (character.character_index?.toString() ?? "1"), inline: true },
+            { name: "Total XP", value: `${Math.floor(character.xp)}`, inline: true },
+            { name: "Tier Role", value: tierRoleId ? `<@&${tierRoleId}>` : "None", inline: true },
+        )
+        .setThumbnail(
+            (character.picture_url && character.picture_url !== "null")
+                ? character.picture_url
+                : XPHOLDER_ICON_URL
+        )
+        .setColor(color)
+        .setTimestamp();
+
+    // Optional flavor fields
+    const flavorFields = [];
+    if (character.class)      flavorFields.push({ name: "Class",      value: character.class,                         inline: true });
+    if (character.species || character.race)
+                             flavorFields.push({ name: "Race",       value: character.species || character.race,     inline: true });
+    if (character.background) flavorFields.push({ name: "Background", value: character.background,                    inline: true });
+    if (character.alignment)  flavorFields.push({ name: "Alignment",  value: character.alignment,                     inline: true });
+    if (flavorFields.length) {
+        embed.spliceFields(3, 0, ...flavorFields);
+    }
+
+    // Progress + details
+    embed.addFields(
+        { name: "XP Freeze",       value: isFrozen, inline: true },
+        { name: "XP Share",        value: isShare,  inline: true },
+        { name: "Ping on Award",   value: isPing,   inline: true },
+        { name: "Progress",        value: progressBar, inline: false },
+        { name: "Level XP",        value: `\`${currentLevelXp} / ${xpToNext}\` (${Math.floor((currentLevelXp / Math.max(xpToNext, 1)) * 100)}%)`, inline: false },
+        { name: "\u200B",          value: `**Support:** [Ko‑fi](${DONATE_URL}) • **Dev:** [Join](${DEV_SERVER_URL})`, inline: false }
+    );
+
+    if (character.sheet_url) {
+        embed.setURL(character.sheet_url);
+    }
+
+    return embed;
 }
 
 module.exports = {
@@ -351,7 +487,7 @@ module.exports = {
     getActiveCharacterIndex,
     getLevelInfo,
     getRoleMultiplier,
-    getTier,
+    getTierInfo,
     getXp,
     getProgressionBar,
     mergeListOfObjects,
@@ -363,5 +499,7 @@ module.exports = {
     logSuccess,
     sqlInjectionCheck,
     safeChannelSend,
-    updateMemberTierRole
+    updateMemberTierRoles,
+    getTierVisuals,
+    buildCharacterEmbed
 };

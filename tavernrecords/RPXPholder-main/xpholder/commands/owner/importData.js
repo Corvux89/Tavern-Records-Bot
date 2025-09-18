@@ -74,6 +74,8 @@ module.exports = {
       o.setName('roles_csv').setDescription('roles.csv').setRequired(false))
     .addAttachmentOption(o =>
       o.setName('channels_csv').setDescription('channels.csv').setRequired(false))
+    .addAttachmentOption(o => 
+      o.setName('tiers_csv').setDescription('tiers.csv').setRequired(false))
     .addStringOption(o =>
       o.setName('mode')
        .setDescription('merge (upsert) or replace (overwrite existing)')
@@ -112,12 +114,14 @@ module.exports = {
       const attChars = interaction.options.getAttachment('characters_csv');
       const attCfg   = interaction.options.getAttachment('config_csv');
       const attLvls  = interaction.options.getAttachment('levels_csv');
+      const attTiers  = interaction.options.getAttachment('tiers_csv')
       const attRoles = interaction.options.getAttachment('roles_csv');
       const attChans = interaction.options.getAttachment('channels_csv');
 
       const charsText = await fetchText(attChars);
       const cfgText   = attCfg   ? await fetchText(attCfg)   : '';
       const lvlsText  = attLvls  ? await fetchText(attLvls)  : '';
+      const tiersText = attTiers ? await fetchText(attTiers) : '';
       const rolesText = attRoles ? await fetchText(attRoles) : '';
       const chansText = attChans ? await fetchText(attChans) : '';
 
@@ -125,6 +129,7 @@ module.exports = {
       const charsRows = csvToObjects(charsText);
       const cfgRows   = cfgText   ? csvToObjects(cfgText)   : [];
       const lvlRows   = lvlsText  ? csvToObjects(lvlsText)  : [];
+      const tierRows  = tiersText ? csvToObjects(tiersText) : [];
       const roleRows  = rolesText ? csvToObjects(rolesText) : [];
       const chanRows  = chansText ? csvToObjects(chansText) : [];
 
@@ -156,6 +161,20 @@ module.exports = {
           const xpToNext = parseInt(r.xp_to_next, 10);
           if (!Number.isInteger(lvl) || !Number.isFinite(xpToNext)) continue;
           await guildService.updateLevel(lvl, xpToNext);
+        }
+      }
+
+      // ---- Import Tiers ----
+      if (tierRows.length > 0) {
+        // replace: set each level from CSV; merge: same behavior (upsert by key)
+        for (const r of tierRows) {
+          const tier = parseInt(r.tier);
+          const min_level = parseInt(r.min_level)
+          const max_level = parseInt(r.max_level)
+          const cp_percent = Number(r.cp_percent)
+
+          if (!Number.isInteger(tier) || !Number.isInteger(min_level) || !Number.isInteger(max_level) || !cp_percent) continue
+          await guildService.updateTier(tier, min_level, max_level, cp_percent)
         }
       }
 

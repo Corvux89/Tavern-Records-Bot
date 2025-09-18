@@ -27,12 +27,12 @@ const {
   logSuccess,
   safeChannelSend,
   getLevelInfo,
-  getTier
+  updateMemberTierRoles,
+  getXp,
+  buildCharacterEmbed
 } = require('./xpholder/utils');
 
 const { runHealthCheck } = require('./xpholder/commands/owner/health');
-const { getXp } = require('./xpholder/utils/levels');
-const { buildCharacterEmbed } = require('./xpholder/utils/embedBuilder');
 const { DONATE_URL } = require('./xpholder/config.json');
 
 dotenv.config();
@@ -165,7 +165,7 @@ client.on('guildDelete', (guild) => {
 });
 
 client.on('interactionCreate', async interaction => {
-  if (!interaction.isCommand() || !interaction.inGuild()) return;
+  if (!interaction.isChatInputCommand() || !interaction.inGuild()) return;
 
   const command = client.commands.get(interaction.commandName);
   if (!command) return;
@@ -276,60 +276,41 @@ async function updateCharacterXpAndMessage(guild, gService, character, xp, playe
     const newLevelInfo = getLevelInfo(gService.levels, newTotalXp);
 
     const leveledUp = String(oldLevelInfo.level) !== String(newLevelInfo.level);
-    if (leveledUp) {
-      const newTier = getTier(parseInt(newLevelInfo.level));
 
-      const rolesToRemove = [];
-      for (let i = 1; i <= 4; i++) {
-        if (i !== newTier.tier) {
-          const role = await guild.roles.fetch(gService.config[`tier${i}RoleId`]).catch(() => null);
-          if (role) rolesToRemove.push(role);
-        }
-      }
-      const newTierRole = await guild.roles.fetch(gService.config[`tier${newTier.tier}RoleId`]).catch(() => null);
-
-      try {
-        const updatedPlayer = await player.roles.remove(rolesToRemove.filter(Boolean));
-        if (newTierRole) await updatedPlayer.roles.add(newTierRole);
-      } catch (e) { console.error(e); }
-    }
+    await updateMemberTierRoles(guild, gService, player)
 
     let awardChannel = null;
     try { awardChannel = await guild.channels.fetch(gService.config["levelUpChannelId"]); } catch (_) {}
 
-    const embed = await buildCharacterEmbed(gService, guild, player, { ...character, xp: newTotalXp });
-    if (leveledUp) {
+    if (leveledUp){
+      const embed = await buildCharacterEmbed(gService, guild, player, { ...character, xp: newTotalXp})
       embed.setTitle(`${character.name} Leveled Up! 🎉`);
-    } else {
-      embed.setTitle(`${character.name} Gained XP`);
-    }
-    embed.setFooter({ text: `Support the bot: ${DONATE_URL}` });
+      embed.setFooter({ text: `Support the bot: ${DONATE_URL}`})
 
-    if (awardChannel) {
-      await safeChannelSend(
-        awardChannel,
-        {
-          content: leveledUp ? `<@${player.id}>` : undefined,
-          allowedMentions: leveledUp ? { users: [player.id] } : undefined,
-          embeds: [embed]
-        }
-      );
-
-      if (leveledUp) {
-        try {
-          await logSuccess(
-            { client: guild.client, guild, user: player.user, commandName: 'auto_level_up', options: { _hoistedOptions: [] } },
-            `Level Up: ${character.name}`,
-            [
-              { name: "Player", value: `<@${player.id}>`, inline: true },
-              { name: "Old → New", value: `${oldLevelInfo.level} → **${newLevelInfo.level}**`, inline: true },
-              { name: "Gained", value: `${Math.floor(xp)} XP`, inline: true }
-            ]
-          );
-        } catch (_) {}
+      if (awardChannel){
+        await safeChannelSend(
+          awardChannel,
+          {
+            content: `<@${player.id}>`,
+            allowedMentions: { users: [player.id] },
+            embeds: [embed]
+          }
+        )
+      } else {
+        try { await player.send({ embeds: [embed] }); } catch (_) {}
       }
-    } else if (leveledUp) {
-      try { await player.send({ embeds: [embed] }); } catch (_) {}
+
+      try {
+        await logSuccess(
+          { client: guild.client, guild, user: player.user, commandName: 'auto_level_up', options: { _hoistedOptions: [] } },
+          `Level Up: ${character.name}`,
+          [
+            { name: "Player", value: `<@${player.id}>`, inline: true },
+            { name: "Old → New", value: `${oldLevelInfo.level} → **${newLevelInfo.level}**`, inline: true },
+            { name: "Gained", value: `${Math.floor(xp)} XP`, inline: true }
+          ]
+        );
+      } catch (_) {}
     }
   } catch (error) {
     console.error(error);

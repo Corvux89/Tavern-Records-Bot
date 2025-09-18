@@ -1,6 +1,6 @@
 // xpholder/commands/owner/exportData.js
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { AttachmentBuilder } = require('discord.js');
+const { AttachmentBuilder, BaseGuildEmojiManager } = require('discord.js');
 const { MessageFlags } = require('discord-api-types/v10');
 
 function toCsvRow(arr) {
@@ -14,7 +14,12 @@ function toCsvRow(arr) {
 function mapToCsv(mapObj, headers) {
   const rows = [toCsvRow(headers)];
   for (const [k, v] of Object.entries(mapObj || {})) {
-    rows.push(toCsvRow([k, v]));
+    if (typeof v == 'object' && v !== null){
+      rows.push(toCsvRow(headers.map(h => v[h])));
+    } else {
+      rows.push(toCsvRow([k, v]));
+    }
+    
   }
   return rows.join('\n') + '\n';
 }
@@ -76,6 +81,7 @@ module.exports = {
       const characters = await guildService.getAllGuildCharacters();
       const configCsv   = mapToCsv(guildService.config || {}, ['name','value']);
       const levelsCsv   = mapToCsv(guildService.levels || {}, ['level','xp_to_next']);
+      const tiersCsv    = mapToCsv(guildService.tiers || {}, ['tier', 'min_level', 'max_level', 'cp_percent']);
       const rolesCsv    = mapToCsv(guildService.roles || {}, ['role_id','xp_bonus']);
       const channelsCsv = mapToCsv(guildService.channels || {}, ['channel_id','xp_per_post']);
       const charsCsv    = charactersToCsv(characters || []);
@@ -84,6 +90,7 @@ module.exports = {
       const files = [
         new AttachmentBuilder(Buffer.from(configCsv, 'utf8'),   { name: 'config.csv' }),
         new AttachmentBuilder(Buffer.from(levelsCsv, 'utf8'),   { name: 'levels.csv' }),
+        new AttachmentBuilder(Buffer.from(tiersCsv, 'utf-8'),   { name: 'tiers.csv'}),
         new AttachmentBuilder(Buffer.from(rolesCsv, 'utf8'),    { name: 'roles.csv' }),
         new AttachmentBuilder(Buffer.from(channelsCsv, 'utf8'), { name: 'channels.csv' }),
         new AttachmentBuilder(Buffer.from(charsCsv, 'utf8'),    { name: 'characters.csv' }),

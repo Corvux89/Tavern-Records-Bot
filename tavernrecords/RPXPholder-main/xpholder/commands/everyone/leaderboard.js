@@ -1,8 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
-const { getActiveCharacterIndex, getLevelInfo, getTier } = require('../../utils');
-const { getTierVisuals } = require('../../utils/embedBuilder');
+const { getActiveCharacterIndex, getLevelInfo, getTierInfo, getTierVisuals } = require('../../utils');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -122,8 +121,8 @@ module.exports = {
           const c = slice[i];
           const xp = Number(c.xp) || 0;
           const li = getLevelInfo(guildService.levels, xp);
-          const tier = getTier(parseInt(li.level));
-          const { emoji } = await getTierVisuals(guild, guildService.config[`tier${tier.tier}RoleId`]);
+          const ti = getTierInfo(guildService.tiers, li.level)
+          const { emoji } = await getTierVisuals(guild, guildService.config[`tier${ti.tier}RoleId`]);
 
           if (!topThumb && c.picture_url && c.picture_url !== 'null') {
             topThumb = c.picture_url;
@@ -134,8 +133,8 @@ module.exports = {
           const p = slice[i];
           const xp = Number(p.xp) || 0;
           const li = getLevelInfo(guildService.levels, xp);
-          const tier = getTier(parseInt(li.level));
-          const { emoji } = await getTierVisuals(guild, guildService.config[`tier${tier.tier}RoleId`]);
+          const ti = getTierInfo(guildService.tiers, li.level)
+          const { emoji } = await getTierVisuals(guild, guildService.config[`tier${ti.tier}RoleId`]);
 
           if (!topThumb && p.rep?.picture_url && p.rep.picture_url !== 'null') {
             topThumb = p.rep.picture_url;
@@ -170,8 +169,8 @@ module.exports = {
           if (yourRank && (yourRank <= 0 || yourRank > items.length || (yourRank <= start || yourRank > start + slice.length))) {
             const xp = Number(yourChar?.xp) || 0;
             const li = getLevelInfo(guildService.levels, xp);
-            const tier = getTier(parseInt(li.level));
-            const { emoji } = await getTierVisuals(guild, guildService.config[`tier${tier.tier}RoleId`]);
+            const ti = getTierInfo(guildService.tiers, li.level)
+            const { emoji } = await getTierVisuals(guild, guildService.config[`tier${ti.tier}RoleId`]);
             youLine = `**You:** #${yourRank} ${emoji ?? ''} **${yourChar?.name ?? 'Character'}** — Lvl ${li.level} · ${Math.floor(xp)} XP`;
           }
         }
@@ -200,8 +199,8 @@ module.exports = {
         if (yourRank && (yourRank <= 0 || yourRank > items.length || (yourRank <= start || yourRank > start + slice.length))) {
           const xp = Number(yourRow?.xp) || 0;
           const li = getLevelInfo(guildService.levels, xp);
-          const tier = getTier(parseInt(li.level));
-          const { emoji } = await getTierVisuals(guild, guildService.config[`tier${tier.tier}RoleId`]);
+          const ti = getTierInfo(guildService.tiers, li.level)
+          const { emoji } = await getTierVisuals(guild, guildService.config[`tier${ti.tier}RoleId`]);
           youLine = `**You:** #${yourRank} ${emoji ?? ''} <@${yourRow.player_id}> — **${yourRow.name}** (Lvl ${li.level}) · ${Math.floor(xp)} XP`;
         }
       }
