@@ -12,6 +12,7 @@ const {
     safeChannelSend,
     logSuccess,
     getTierVisuals,
+    getTierInfo,
     buildCharacterEmbed
 } = require("../../utils");
 
