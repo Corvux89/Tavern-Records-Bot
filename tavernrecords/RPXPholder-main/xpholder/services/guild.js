@@ -379,15 +379,10 @@ class guildService {
         await this.database.closeDatabase();
 
         // Levels (seed fresh guilds)
-        let levelsInit = "INSERT OR REPLACE INTO levels ( level, xp_to_next ) VALUES ";
-        delimiter = "";
-        for (const [level, xp_to_next] of Object.entries(LEVELS)) {
-            levelsInit += `${delimiter}(${level}, ${xp_to_next})`;
-            delimiter = ",";
-        }
-        await this.database.openDatabase();
-        await this.database.execute(levelsInit);
-        await this.database.closeDatabase();
+        await this.ensureLevelsSeeded()
+
+        // Tiers (seed fresh guilds)
+        await this.ensureTiersSeeded()
 
         // Roles (xpFreeze defaults)
         let rolesInit = `INSERT OR REPLACE INTO roles ( role_id, xp_bonus ) VALUES ("${configDetails["xpFreezeRoleId"]}", 0)`;
