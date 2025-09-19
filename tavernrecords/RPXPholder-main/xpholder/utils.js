@@ -117,7 +117,7 @@ function getRoleMultiplier(type, guildRoles, userRoles) {
 function getTierInfo(tiers, level) {
     for ([tier, data] of Object.entries(tiers)) {
         if (level >= data.min_level && level <= data.max_level){
-            return {"tier": tier, min_level: data.min_level, max_level: data.max_level, cp_percent: data.cp_percent}
+            return {"tier": tier, min_level: data.min_level, max_level: data.max_level, cp_percent: data.cp_percent / 100}
         }
     }
 }
