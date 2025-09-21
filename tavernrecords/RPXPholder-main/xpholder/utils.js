@@ -311,11 +311,11 @@ async function updateMemberTierRoles(guild, guildService, member){
             return getTierInfo(guildService.tiers, levelInfo.level).tier
         }))];
 
-        for (let t=1; t <= 4; t++){
-            const role = await guild.roles.fetch(guildService.config[`tier${t}RoleId`]).catch(() => null);
+        for (const tierNumber of Object.keys(guildService.tiers)){
+            const role = await guild.roles.fetch(guildService.config[`tier${tierNumber}RoleId`]).catch(() => null);
 
             if (role){
-                if (characterTiers.includes(t)){
+                if (characterTiers.includes(parseInt(tierNumber))){
                     rolesToAdd.push(role)
                 } else{
                     rolesToRemove.push(role)

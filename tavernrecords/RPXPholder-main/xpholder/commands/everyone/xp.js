@@ -13,7 +13,8 @@ const {
     logSuccess,
     getTierVisuals,
     getTierInfo,
-    buildCharacterEmbed
+    buildCharacterEmbed,
+    updateMemberTierRoles
 } = require("../../utils");
 
 // Local helper – emoji progress bar (used for retire embed)
@@ -198,6 +199,7 @@ function createButtonEvents(
 
                     // Compute tier of the selected character
                     const newCharacterLevelInfo = getLevelInfo(guildService.levels, newCharacter.xp);
+                    await updateMemberTierRoles(guild, guildService.tiers, player)
 
                     // Build role arrays
                     const removeRoles = [];
@@ -401,12 +403,9 @@ function createButtonEvents(
                         const role = await guild.roles.fetch(rid).catch(() => null);
                         if (role) removeRoles.push(role);
                     }
-                    for (let tierIndex = 1; tierIndex <= 4; tierIndex++) {
-                        const rid = guildService.config[`tier${tierIndex}RoleId`];
-                        if (!rid) continue;
-                        const role = await guild.roles.fetch(rid).catch(() => null);
-                        if (role) removeRoles.push(role);
-                    }
+
+                    await updateMemberTierRoles(guild, guildService.tiers, player)
+                    
                     try { await player.roles.remove(removeRoles.filter(Boolean)); } catch (e) {
                         console.error("[xp_retire_confirm] remove roles error:", e);
                         try {
@@ -426,7 +425,7 @@ function createButtonEvents(
 
                     // Build retire embed with tier visuals + bar
                     const levelInfo = getLevelInfo(guildService.levels, retiringCharacter.xp);
-                    const tierInfo = getTierInfo(guild.tiers, parseInt(levelInfo.level));
+                    const tierInfo = getTierInfo(guildService.tiers, parseInt(levelInfo.level));
                     const { emoji } = await getTierVisuals(guild, guildService.config[`tier${tierInfo.tier}RoleId`]);
                     const currentLevelXp = Math.floor(levelInfo.levelXp ?? 0);
                     const xpToNext = Math.floor(levelInfo.xpToNext ?? 1);
