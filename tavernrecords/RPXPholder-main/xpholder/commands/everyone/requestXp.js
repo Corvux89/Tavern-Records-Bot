@@ -84,8 +84,7 @@ module.exports = {
         try {
             awardChannel = await guild.channels.fetch(guildService.config["levelUpChannelId"]);
         } catch (error) {
-            const owner = await guild.members.fetch(guild.ownerId);
-            await interaction.editReply(`Sorry, but I can't find the **level_up_channel**.\nPlease contact ${owner} and ask them to set a new **level_up_channel** with : \`/edit_config\``);
+            await interaction.editReply(`Sorry, but I can't find the **level_up_channel**.\nPlease contact ${guildService.mentionOwner(interaction)} and ask them to set a new **level_up_channel** with : \`/edit_config\``);
             return;
         }
 
@@ -280,11 +279,7 @@ function createButtonEvents(guildService, requestMessage, character, deltaXp, co
     // Only mods/owner can act on the request
     const filter = btnInteraction => (
         ['request_approve', 'request_reject'].includes(btnInteraction.customId) &&
-        requestMessage?.id === btnInteraction.message.id &&
-        (
-            btnInteraction.member._roles.includes(guildService.config["moderationRoleId"]) ||
-            btnInteraction.member.id === btnInteraction.member.guild.ownerId
-        )
+        requestMessage?.id === btnInteraction.message.id && guildService.isModerator(btnInteraction)
     );
 
     if (!collectorChannel || !requestMessage) return;
@@ -300,7 +295,7 @@ function createButtonEvents(guildService, requestMessage, character, deltaXp, co
                     awardEmbed.setColor(XPHOLDER_APPROVE_COLOUR);
 
                     await guildService.updateCharacterXP(character, deltaXp);
-                    await updateMemberTierRoles(guild, guildService, player)
+                    await updateMemberTierRoles(btnInteraction.guild, guildService, player)
 
                     await btnInteraction.update({ embeds: [awardEmbed], components: [] });
                     await player.send({ embeds: [awardEmbed] }).catch(() => {});

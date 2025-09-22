@@ -26,7 +26,7 @@ module.exports = {
 
     async execute(guildService, interaction) {
         // Owner gate
-        if (interaction.user.id !== interaction.guild.ownerId) {
+        if (!guildService.isOwner(interaction)) {
             await interaction.editReply('Sorry, only the **server owner** can use this command.');
             return;
         }

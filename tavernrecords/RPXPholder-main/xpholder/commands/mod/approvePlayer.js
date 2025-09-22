@@ -115,8 +115,7 @@ module.exports = {
         }
 
         // Permission check
-        if (!guildService.isMod(interaction.member._roles) &&
-            interaction.user.id !== interaction.guild.ownerId) {
+        if (!guildService.isModerator(interaction)) {
             await interaction.editReply("Sorry, you do not have the right role to use this command.");
             return;
         }

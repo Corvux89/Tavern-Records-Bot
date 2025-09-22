@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, PermissionsBitField } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -13,7 +13,7 @@ module.exports = {
 
   async execute(guildService, interaction) {
     // Owner only
-    if (interaction.user.id !== interaction.guild.ownerId) {
+    if (!guildService.isOwner(interaction)) {
       await interaction.editReply('Only the server owner can use /health.');
       return;
     }
@@ -75,6 +75,7 @@ module.exports = {
     // 5) Roles/channels to check
     const checks = {
       moderationRole: await fetchRole(guildService.config?.moderationRoleId),
+      ownerRole: await fetchRole(guildService.config?.ownerRoleId),
       xpFreezeRole: await fetchRole(guildService.config?.xpFreezeRoleId),
       xpShareRole: await fetchRole(guildService.config?.xpShareRoleId),
       levelUpChannel: await fetchChan(guildService.config?.levelUpChannelId),
@@ -131,6 +132,7 @@ module.exports = {
 
     lines.push(
       `${mark(checks.moderationRole.ok)} moderationRoleId ${checks.moderationRole.mention ?? ''}`.trim(),
+      `${mark(checks.ownerRole.ok)} ownerRoleId ${checks.ownerRole?.mention || '*Defaults to Server Owner*'}`.trim(),
       `${mark(checks.xpFreezeRole.ok)} xpFreezeRoleId ${checks.xpFreezeRole.mention ?? ''}`.trim(),
       `${mark(checks.xpShareRole.ok)} xpShareRoleId ${checks.xpShareRole.mention ?? ''}`.trim(),
       `${mark(checks.levelUpChannel.ok)} levelUpChannelId ${checks.levelUpChannel.mention ?? ''}`.trim(),
@@ -146,12 +148,27 @@ module.exports = {
       lines.push(`${mark(r.ok)} character${r.i}RoleId ${r.mention ?? ''}`.trim());
     }
 
+    // 8.a Permissions
+    const pString = []
+    pString.push(
+      `${mark(interaction.guild.members.me.permissions.has(PermissionsBitField.Flags.ManageRoles))} Manage Roles`.trim(),
+      `${mark(interaction.guild.members.me.permissions.has(PermissionsBitField.Flags.ManageChannels))} Manage Channels`.trim(),
+      `${mark(interaction.guild.members.me.permissions.has(PermissionsBitField.Flags.ViewChannel))} View Channels`.trim(),
+      `${mark(interaction.guild.members.me.permissions.has(PermissionsBitField.Flags.ManageMessages))} Manage Messages`.trim(),
+      `${mark(interaction.guild.members.me.permissions.has(PermissionsBitField.Flags.ReadMessageHistory))} Message History`.trim(),
+      `${mark(interaction.guild.members.me.permissions.has(PermissionsBitField.Flags.SendMessages))} Send Messages`.trim(),
+      `${mark(interaction.guild.members.me.permissions.has(PermissionsBitField.Flags.SendMessagesInThreads))} Send Messages in Threads`.trim(),
+    )
+
     // 9) Final embed
     const embed = new EmbedBuilder()
       .setTitle(`Health Check — ${g.name}`)
       .setDescription(lines.join('\n'))
       .setColor((!registered || missing.length || numericIssues.length || formulaMsg || !levelsOk) ? 0xFFA500 : 0x57F287) // amber if issues, green if good
-      .setTimestamp();
+      .setTimestamp()
+      .addFields(
+        { name: 'Bot Permissions', value: pString.join('\n')}
+      );
 
     // Small tips if something is off
     const tips = [];

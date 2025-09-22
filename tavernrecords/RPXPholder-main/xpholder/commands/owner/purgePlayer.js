@@ -25,7 +25,7 @@ module.exports = {
         }
 
         // Owner gate
-        if (interaction.user.id != interaction.guild.ownerId) {
+        if (!guildService.isOwner(interaction)) {
             await interaction.editReply("Sorry, but you are not the owner of the server, and can not use this command.");
             return;
         }

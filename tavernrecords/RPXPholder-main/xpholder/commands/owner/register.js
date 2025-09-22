@@ -22,7 +22,7 @@ module.exports = {
 
     async execute(guildService, interaction) {
         // Owner check
-        if (interaction.user.id !== interaction.guild.ownerId) {
+        if (!guildService.isOwner(interaction)) {
             if (!interaction.deferred && !interaction.replied) {
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
             }

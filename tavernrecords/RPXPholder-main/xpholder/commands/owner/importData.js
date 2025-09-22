@@ -88,8 +88,7 @@ module.exports = {
       o.setName('public').setDescription('Show this output publicly?').setRequired(false)),
   
   async execute(guildService, interaction) {
-    const isOwner = interaction.user.id === interaction.guild.ownerId;
-    if (!isOwner) {
+    if (!guildService.isOwner(interaction)) {
       if (!interaction.deferred && !interaction.replied) {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
       }

@@ -52,9 +52,23 @@ class guildService {
         return Object.fromEntries(sqlTable.map(row => [row[primaryKey], row]))
     }
 
-    isMod(listOfRoles) {
-        const modId = this.config?.["moderationRoleId"];
-        return !!modId && Array.isArray(listOfRoles) && listOfRoles.includes(modId);
+    isModerator(interaction) {
+        const modId = this.config?.["moderationRoleId"]
+        const listOfRoles = interaction.member._roles
+
+        return (!!modId && Array.isArray(listOfRoles) && listOfRoles.includes(modId)) || this.isOwner(interaction)
+    }
+
+    isOwner(interaction) {
+        const ownerID = this.config?.["ownerRoleId"]
+        const listOfRoles = interaction.member._roles
+        return (!!ownerID && Array.isArray(listOfRoles) && listOfRoles.includes(ownerID)) || (interaction.guild.ownerId == interaction.user.id)
+    }
+
+    mentionOwner(interaction) {
+        const ownerID = this.config?.["ownerRoleId"]
+
+        return ownerID ? `<@&${ownerID}>` : `<@${interaction.guild.ownerId}>` 
     }
 
     async isRegistered() {

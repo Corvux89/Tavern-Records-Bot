@@ -185,11 +185,11 @@ client.on('interactionCreate', async interaction => {
     try {
       if (interaction.deferred || interaction.replied) {
         await interaction.editReply({
-          content: `Sorry, but your server is not registered. Please contact <@${interaction.guild.ownerId}> and ask them to run \`/register\`.`,
+          content: `Sorry, but your server is not registered. Please contact ${gService.mentionOwner(interaction)} and ask them to run \`/register\`.`,
         });
       } else {
         await interaction.reply({
-          content: `Sorry, but your server is not registered. Please contact <@${interaction.guild.ownerId}> and ask them to run \`/register\`.`,
+          content: `Sorry, but your server is not registered. Please contact ${gService.mentionOwner(interaction)} and ask them to run \`/register\`.`,
           ephemeral: true
         });
       }

@@ -114,6 +114,11 @@ module.exports = {
            .setDescription('Set the XP Share role')
            .addRoleOption(o => o.setName('role').setDescription('Share role').setRequired(true))
            .addBooleanOption(o => o.setName('public').setDescription('Show this publicly?')))
+        .addSubcommand(s =>
+          s.setName('owner_role')
+           .setDescription('Set the role that can use owner commands')
+           .addRoleOption(o => o.setName('role').setDescription('Owner Role').setRequired(true))
+           .addBooleanOption(o => o.setName('public').setDescription('Show this publicly?')))
     )
 
     // -------- ADVANCED GROUP --------
@@ -129,9 +134,7 @@ module.exports = {
 
   async execute(guildService, interaction) {
     // Permissions: owner or mod role
-    const isOwner = interaction.user.id === interaction.guild.ownerId;
-    const isMod = guildService.isMod(interaction.member._roles);
-    if (!isOwner && !isMod) {
+    if (!guildService.isModerator(interaction)) {
       if (!interaction.deferred && !interaction.replied) {
         try { await interaction.deferReply({ flags: MessageFlags.Ephemeral }); } catch {}
       }
@@ -316,6 +319,16 @@ module.exports = {
               { name: "moderationRoleId", value: `<@&${role.id}>`, inline: true }
             ])]
           });
+        }
+
+        if (sub === 'owner_role') {
+          const role = interaction.options.getRole('role')
+          await guildService.setConfigKey('ownerRoleId', role.id)
+          return interaction.editReply({
+            embeds: [ok("Config Updated - Owner Role", [
+              { name: "ownerRoleId", value: `<@&${role.id}>`, inline: true }
+            ])]
+          })
         }
 
         if (sub === 'tier_role') {
