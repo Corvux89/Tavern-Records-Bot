@@ -308,7 +308,7 @@ async function updateMemberTierRoles(guild, guildService, member){
         const rolesToAdd = [];
         const characterTiers = [...new Set(characters.map(char => {
             const levelInfo = getLevelInfo(guildService.levels, char.xp)
-            return getTierInfo(guildService.tiers, levelInfo.level).tier
+            return parseInt(getTierInfo(guildService.tiers, levelInfo.level).tier)
         }))];
 
         for (const tierNumber of Object.keys(guildService.tiers)){

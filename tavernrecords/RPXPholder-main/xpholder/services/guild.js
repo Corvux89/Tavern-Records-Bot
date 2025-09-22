@@ -217,7 +217,7 @@ class guildService {
 
             if (give > 0) {
                 if (isCP) {
-                    newXp = awardCP(guildService, oldXp, give);
+                    newXp = awardCP(this, oldXp, give);
                 } else {
                     newXp = oldXp + give;
                 }

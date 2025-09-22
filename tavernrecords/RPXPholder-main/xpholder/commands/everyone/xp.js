@@ -199,7 +199,7 @@ function createButtonEvents(
 
                     // Compute tier of the selected character
                     const newCharacterLevelInfo = getLevelInfo(guildService.levels, newCharacter.xp);
-                    await updateMemberTierRoles(guild, guildService.tiers, player)
+                    await updateMemberTierRoles(guild, guildService, player)
 
                     // Build role arrays
                     const removeRoles = [];

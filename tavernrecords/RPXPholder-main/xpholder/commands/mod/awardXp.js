@@ -512,7 +512,7 @@ function createButtonEvents(guildService, interaction, message, undoChanges) {
             for (const ch of (undoChanges || [])) {
                 await guildService.setCharacterXP(ch);
             }
-            await updateMemberTierRoles(interaction.guild, guildService, member)
+            await updateMemberTierRoles(interaction.guild, guildService, btn.member)
             undone = true;
 
             const undoAwardEmbed = new EmbedBuilder()
