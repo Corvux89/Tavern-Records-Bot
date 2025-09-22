@@ -142,21 +142,21 @@ client.once('ready', async () => {
   await validateGuildResourcesOnReady(client, getGService);
 
   // Auto health DM to owner on startup (only if enabled + has problems)
-  for (const [guildId, guild] of client.guilds.cache) {
-    try {
-      const gService = await getGService(guildId);
-      if (!await gService.isRegistered()) continue;
-      if (gService.config?.healthAutoDM !== 'on') continue;
+  // for (const [guildId, guild] of client.guilds.cache) {
+  //   try {
+  //     const gService = await getGService(guildId);
+  //     if (!await gService.isRegistered()) continue;
+  //     if (gService.config?.healthAutoDM !== 'on') continue;
 
-      const owner = await guild.fetchOwner();
-      const { embed, hasProblems } = await runHealthCheck(gService, guild);
-      if (hasProblems) {
-        await owner.send({ embeds: [embed] }).catch(() => {});
-      }
-    } catch (e) {
-      console.warn(`[health autoDM] guild ${guildId} failed:`, e?.message);
-    }
-  }
+  //     const owner = await guild.fetchOwner();
+  //     const { embed, hasProblems } = await runHealthCheck(gService, guild);
+  //     if (hasProblems) {
+  //       await owner.send({ embeds: [embed] }).catch(() => {});
+  //     }
+  //   } catch (e) {
+  //     console.warn(`[health autoDM] guild ${guildId} failed:`, e?.message);
+  //   }
+  // }
 });
 
 // Optional: clean service cache when leaving a guild

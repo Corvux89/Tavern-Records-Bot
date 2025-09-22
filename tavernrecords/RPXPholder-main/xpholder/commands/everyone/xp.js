@@ -404,7 +404,7 @@ function createButtonEvents(
                         if (role) removeRoles.push(role);
                     }
 
-                    await updateMemberTierRoles(guild, guildService.tiers, player)
+                    await updateMemberTierRoles(guild, guildService, player)
                     
                     try { await player.roles.remove(removeRoles.filter(Boolean)); } catch (e) {
                         console.error("[xp_retire_confirm] remove roles error:", e);
