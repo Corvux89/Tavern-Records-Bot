@@ -85,6 +85,8 @@ module.exports = {
                 );
             const replyMessage = await interaction.editReply({ embeds: [gameEmbed[0]], components: [viewButtons] });
             createButtonEvents(interaction, replyMessage, gameEmbed)
+        } else if (gameEmbed.length == 0) {
+            await interaction.editReply("No special rules/content found")        
         } else {
             await interaction.editReply({ embeds: gameEmbed });
         };
@@ -118,6 +120,7 @@ ${configObj.approveMessage}`)
             { inline: true, name: "Character 10", value: `<@&${configObj.character10RoleId}>` },
             { inline: true, name: "Level-Up Channel", value: `<#${configObj.levelUpChannelId}>` },
             { inline: true, name: "Mod Role", value: `<@&${configObj.moderationRoleId}>` },
+            { inline: true, name: "Owner Role", value: `<@&${configObj.ownerRoleId}>` },
             { inline: true, name: "Role Bonus", value: `${configObj.roleBonus}` },
             { inline: true, name: "Tier 1", value: `<@&${configObj.tier1RoleId}>` },
             { inline: true, name: "Tier 2", value: `<@&${configObj.tier2RoleId}>` },

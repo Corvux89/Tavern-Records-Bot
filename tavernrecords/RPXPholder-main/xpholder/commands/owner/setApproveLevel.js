@@ -23,7 +23,7 @@ module.exports = {
             await interaction.deferReply({ flags: isPublic ? undefined : MessageFlags.Ephemeral }).catch(() => {});
         }
 
-        if (guildService.isOwner(interaction)) {
+        if (!guildService.isOwner(interaction)) {
             await interaction.editReply("Sorry, but only the server owner can use this command.");
             return;
         }
