@@ -8,8 +8,10 @@ const { listOfObjsToObj, awardCP } = require("../utils");
 const { LEVELS, TIERS } = require("../config.json");
 
 class guildService {
-    constructor(database) {
+    constructor(database, guildId) {
         this.database = database;
+        this.db = new SequelizeDatabaseService(`./guilds/${guildId}.db`)
+
 
         this.xpCache = {};
         this.registered = false;

@@ -14,10 +14,9 @@ const fs = require('fs');
 const path = require('path');
 const { Client, Collection, GatewayIntentBits, Partials } = require('discord.js');
 const { MessageFlags } = require('discord-api-types/v10');
-const sqlite3 = require('sqlite3');
 
 const { guildService } = require('./xpholder/services/guild');
-const { sqlLite3DatabaseService } = require('./xpholder/database/sqlite');
+const { SequelizeDatabaseService } = require('./xpholder/database/sequelize')
 
 const {
   getActiveCharacterIndex,
@@ -32,7 +31,6 @@ const {
   buildCharacterEmbed
 } = require('./xpholder/utils');
 
-const { runHealthCheck } = require('./xpholder/commands/owner/health');
 const { DONATE_URL } = require('./xpholder/config.json');
 
 dotenv.config();
@@ -58,7 +56,8 @@ async function getGService(guildId) {
     return cached.gService;
   }
   const dbPath = path.join(__dirname, 'guilds', `${guildId}.db`);
-  const svc = new guildService(await new sqlLite3DatabaseService(sqlite3, dbPath));
+  const sequelizeDb = new SequelizeDatabaseService(dbPath)
+  const svc = new guildService(sequelizeDb, guildId)
 
   // Ensure schema exists even for unregistered guilds
   try { await svc.createDatabases(); } catch (e) { console.warn(`[db] createDatabases(${guildId}) failed:`, e?.message); }
